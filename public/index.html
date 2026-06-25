@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Extractor — SanDisk / WD</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f4f0;
+      --bg3: #eceae4;
+      --text: #1a1a18;
+      --text2: #5f5e5a;
+      --text3: #999895;
+      --border: rgba(0,0,0,0.10);
+      --border2: rgba(0,0,0,0.18);
+      --green: #1D9E75;
+      --green-light: #E1F5EE;
+      --green-dark: #085041;
+      --amber: #FFA500;
+      --amber-text: #4A2800;
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1c; --bg2: #2a2a27; --bg3: #323230;
+        --text: #f0ede6; --text2: #b0aea6; --text3: #737169;
+        --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.16);
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg3);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .page { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+
+    header { margin-bottom: 2rem; }
+    header h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+    header p { font-size: 13px; color: var(--text2); }
+
+    .card {
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text3);
+      margin-bottom: 10px;
+    }
+
+    .drop-zone {
+      border: 1.5px dashed var(--border2);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .drop-zone:hover, .drop-zone.over {
+      border-color: var(--green);
+      background: var(--green-light);
+    }
+    .drop-zone .dz-icon { font-size: 34px; color: var(--text3); display: block; margin-bottom: 10px; }
+    .drop-zone p { font-size: 14px; color: var(--text2); margin-bottom: 4px; }
+    .drop-zone small { font-size: 12px; color: var(--text3); }
+
+    .file-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+    .file-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg2);
+      border-radius: var(--radius);
+      font-size: 13px;
+    }
+    .file-item i { color: var(--green); font-size: 16px; }
+    .file-item .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item .fsize { font-size: 11px; color: var(--text3); }
+    .file-item button { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 15px; display: flex; padding: 2px; line-height: 1; }
+    .file-item button:hover { color: #c0392b; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 18px;
+      border-radius: var(--radius);
+      border: 0.5px solid var(--border2);
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      font-family: inherit;
+      transition: background 0.1s;
+    }
+    .btn:hover { background: var(--bg2); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--green); color: #fff; border-color: var(--green); font-weight: 500; }
+    .btn-primary:hover { background: #0F6E56; border-color: #0F6E56; }
+
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+    .msg {
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .msg i { flex-shrink: 0; margin-top: 1px; }
+    .msg-ok { background: var(--green-light); color: var(--green-dark); border: 0.5px solid #9FE1CB; }
+    .msg-err { background: #FCEBEB; color: #7B1C1C; border: 0.5px solid #F09595; }
+    .hidden { display: none !important; }
+
+    .loading-wrap {
+      display: flex; align-items: center; gap: 12px;
+      padding: 1.5rem;
+      justify-content: center;
+      color: var(--text2);
+      font-size: 14px;
+    }
+    .spinner {
+      width: 22px; height: 22px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .tbl-wrap { overflow-x: auto; border-radius: var(--radius-lg); border: 0.5px solid var(--border); }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 12px;
+      min-width: 980px;
+    }
+    thead tr { background: var(--amber); }
+    thead th {
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--amber-text);
+      white-space: nowrap;
+      border-right: 0.5px solid rgba(0,0,0,0.12);
+    }
+    thead th:last-child { border-right: none; }
+    tbody tr { border-bottom: 0.5px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg2); }
+    tbody td {
+      padding: 7px 10px;
+      white-space: nowrap;
+      border-right: 0.5px solid var(--border);
+      color: var(--text);
+      vertical-align: middle;
+    }
+    tbody td:last-child { border-right: none; }
+    .mono { font-family: 'SF Mono', 'Consolas', monospace; }
+    .num { text-align: right; }
+
+    .hint { font-size: 12px; color: var(--text3); margin: 10px 0 4px; }
+
+    .tsv-area {
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 11px;
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      white-space: pre;
+      overflow-x: auto;
+      max-height: 140px;
+      color: var(--text2);
+      margin-top: 6px;
+    }
+
+    .copy-btn-wrap { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+
+    .badge {
+      display: inline-block;
+      background: var(--green-light);
+      color: var(--green-dark);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .free-tag {
+      display: inline-block;
+      background: #E1F5EE;
+      color: #085041;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      vertical-align: middle;
+      margin-left: 6px;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Invoice Extractor — SanDisk / WD <span class="free-tag">GRATIS</span></h1>
+    <p>Sube los PDFs de facturas comerciales y obtén la tabla lista para pegar en Excel</p>
+  </header>
+
+  <div class="card" id="upload-card">
+    <div class="section-label">Paso 1 — Sube los PDFs</div>
+
+    <div class="drop-zone" id="dz">
+      <i class="ti ti-file-upload dz-icon" aria-hidden="true"></i>
+      <p>Arrastra los PDFs aquí o haz clic para seleccionar</p>
+      <small>Puedes subir varios archivos a la vez</small>
+    </div>
+    <input type="file" id="fi" accept=".pdf" multiple style="display:none">
+
+    <div class="file-list" id="file-list"></div>
+
+    <div id="err-upload" class="msg msg-err hidden">
+      <i class="ti ti-alert-circle" aria-hidden="true"></i>
+      <span id="err-text"></span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-extract" disabled>
+        <i class="ti ti-sparkles" aria-hidden="true"></i>
+        Extraer datos
+      </button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="loading-card">
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <span id="load-text">Analizando facturas...</span>
+    </div>
+  </div>
+
+  <div class="card hidden" id="result-card">
+    <div class="section-label">Paso 2 — Revisa y copia</div>
+
+    <div class="msg msg-ok">
+      <i class="ti ti-circle-check" aria-hidden="true"></i>
+      <span id="ok-text"></span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Delivery ID</th>
+            <th>Item Part Number</th>
+            <th>COO</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+            <th>Extension</th>
+            <th>Item Description</th>
+            <th>Export HTS</th>
+            <th>US ECCN</th>
+            <th>US Export License</th>
+          </tr>
+        </thead>
+        <tbody id="result-body"></tbody>
+      </table>
+    </div>
+
+    <p class="hint">↓ Copia el bloque de abajo y pégalo directo en tu Excel con Ctrl+V. Las columnas quedan alineadas automáticamente.</p>
+    <div class="tsv-area" id="tsv-area"></div>
+
+    <div class="copy-btn-wrap">
+      <button class="btn btn-primary" id="btn-copy">
+        <i class="ti ti-copy" aria-hidden="true"></i> Copiar para Excel
+      </button>
+      <button class="btn" id="btn-reset">
+        <i class="ti ti-refresh" aria-hidden="true"></i> Procesar más facturas
+      </button>
+      <span id="copied-badge" class="badge hidden">¡Copiado!</span>
+    </div>
+  </div>
+
+</div>
+<script>
+  let files = [];
+
+  const dz = document.getElementById('dz');
+  const fi = document.getElementById('fi');
+
+  dz.addEventListener('click', () => fi.click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles(e.dataTransfer.files); });
+  fi.addEventListener('change', e => { addFiles(e.target.files); fi.value = ''; });
+
+  function addFiles(list) {
+    Array.from(list).forEach(f => {
+      if (f.type === 'application/pdf' && !files.find(x => x.name === f.name)) files.push(f);
+    });
+    renderFiles();
+    document.getElementById('btn-extract').disabled = files.length === 0;
+  }
+
+  function renderFiles() {
+    document.getElementById('file-list').innerHTML = files.map((f, i) => `
+      <div class="file-item">
+        <i class="ti ti-file-type-pdf" aria-hidden="true"></i>
+        <span class="fname">${f.name}</span>
+        <span class="fsize">${(f.size / 1024).toFixed(0)} KB</span>
+        <button onclick="removeFile(${i})" aria-label="Quitar"><i class="ti ti-x" aria-hidden="true"></i></button>
+      </div>`).join('');
+  }
+
+  function removeFile(i) {
+    files.splice(i, 1);
+    renderFiles();
+    document.getElementById('btn-extract').disabled = files.length === 0;
+  }
+
+  async function toBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  document.getElementById('btn-extract').addEventListener('click', async () => {
+    document.getElementById('err-upload').classList.add('hidden');
+    document.getElementById('upload-card').classList.add('hidden');
+    document.getElementById('loading-card').classList.remove('hidden');
+    document.getElementById('load-text').textContent = `Analizando ${files.length} factura(s)...`;
+
+    try {
+      const payload = [];
+      for (const f of files) {
+        payload.push({ name: f.name, data: await toBase64(f) });
+      }
+
+      const resp = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: payload }),
+      });
+
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error || 'Error desconocido');
+
+      const rows = result.rows || [];
+      if (rows.length === 0) throw new Error('No se encontraron datos en los PDFs.');
+
+      renderTable(rows);
+      document.getElementById('ok-text').textContent =
+        `${rows.length} línea(s) extraída(s) de ${files.length} factura(s). Lista para copiar.`;
+      document.getElementById('loading-card').classList.add('hidden');
+      document.getElementById('result-card').classList.remove('hidden');
+
+    } catch (err) {
+      document.getElementById('loading-card').classList.add('hidden');
+      document.getElementById('upload-card').classList.remove('hidden');
+      document.getElementById('err-text').textContent = err.message;
+      document.getElementById('err-upload').classList.remove('hidden');
+    }
+  });
+
+  function renderTable(rows) {
+    document.getElementById('result-body').innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.delivery_id}</td>
+        <td class="mono">${r.part_number}</td>
+        <td>${r.coo}</td>
+        <td class="num">${r.quantity}</td>
+        <td class="num mono">${r.unit_price}</td>
+        <td class="num mono">${r.extension}</td>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis" title="${r.item_description}">${r.item_description}</td>
+        <td class="mono">${r.export_hts}</td>
+        <td>${r.us_eccn}</td>
+        <td>${r.us_export_license}</td>
+      </tr>`).join('');
+
+    const headers = ['Delivery ID','Item Part Number','COO','Quantity','Unit Price','Extension','Item Description','Export HTS','US ECCN','US Export License'];
+    const tsv = rows.map(r =>
+      [r.delivery_id, r.part_number, r.coo, r.quantity, r.unit_price, r.extension, r.item_description, r.export_hts, r.us_eccn, r.us_export_license].join('\t')
+    ).join('\n');
+    document.getElementById('tsv-area').textContent = headers.join('\t') + '\n' + tsv;
+  }
+
+  document.getElementById('btn-copy').addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('tsv-area').textContent).then(() => {
+      const b = document.getElementById('copied-badge');
+      b.classList.remove('hidden');
+      setTimeout(() => b.classList.add('hidden'), 2500);
+    });
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    files = [];
+    renderFiles();
+    document.getElementById('btn-extract').disabled = true;
+    document.getElementById('result-card').classList.add('hidden');
+    document.getElementById('upload-card').classList.remove('hidden');
+    document.getElementById('err-upload').classList.add('hidden');
+  });
+</script>
+</body>
+</html>
